@@ -27,6 +27,10 @@
   notify:
   - restart nginx
 
+# Add Diffe-Hellman param
+- name: add dhparam
+  file: path={{ nginx_base_install_dir }}/nginx/conf/ssl/dhparam.pem src=dhparam.pem owner=nginx group=nginx
+
 # _Configure grafana access_
 
 # Remove existing users to ensure only current users remain 
