@@ -1,0 +1,30 @@
+---
+# GRAFANA
+grafana_online_install: true
+grafana_installer_path: /tmp/grafana/grafana-1.9.1.tar.gz
+grafana_version: 1.9.1
+grafana_base_install_dir: /apps
+grafana_influxdb_url: https://grafana/db
+grafana_metrics_db: metrics
+grafana_dashboard_db: dashboard
+grafana_metrics_db_user: root
+grafana_metrics_db_password: root
+grafana_dashboard_db_user: root
+grafana_dashboard_db_password: root
+grafana_healthcheck_url:
+grafana_healthcheck_file:
+grafana_healthcheck_content:
+grafana_htpasswd_files_path:
+grafana_purge_htpasswd: false
+grafana_read_users:
+  guest:
+    username: guest
+    password: guest
+grafana_write_users:
+  user1:
+    username: user
+    password: pass
+grafana_admin_users:
+  admin:
+    username: admin
+    password: pass

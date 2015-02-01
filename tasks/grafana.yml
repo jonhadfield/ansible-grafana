@@ -1,0 +1,86 @@
+---
+
+# Online install
+- name: online install | download grafana
+  get_url: url=http://grafanarel.s3.amazonaws.com/grafana-{{ grafana_version }}.tar.gz dest=/var/tmp/grafana-{{ grafana_version }}.tar.gz
+  when: grafana_online_install
+- name: online install | extract grafana installation
+  unarchive: src=/var/tmp/grafana-{{ grafana_version }}.tar.gz copy=no dest={{ grafana_base_install_dir }}/ mode=0700 creates={{ grafana_base_install_dir }}/grafana-{{ grafana_version }}/index.html
+  when: grafana_online_install
+
+# Offline Install
+- name: offline install | copy and extract grafana installation
+  unarchive: src={{ grafana_installer_path }} dest={{ grafana_base_install_dir }}/ mode=0700 creates={{ grafana_base_install_dir }}/grafana-{{ grafana_version }}/index.html
+  when: not grafana_online_install
+
+# Configure grafana
+- name: configure grafana
+  template: src=config.js.j2 dest={{ grafana_base_install_dir }}/grafana-{{ grafana_version }}/config.js owner=nginx group=nginx
+
+# Set permissions for grafana dir
+- name: grant directory permissions to nginx user for grafana installation directory
+  file: path={{ grafana_base_install_dir }}/grafana-{{ grafana_version }} owner=nginx group=nginx recurse=true
+
+# Configure nginx for grafana
+- name: install grafana virtual server configuration
+  template: src=grafana.conf.j2 dest={{ nginx_base_install_dir }}/nginx/conf/servers/grafana.conf owner=nginx group=nginx
+  notify:
+  - restart nginx
+
+# _Configure grafana access_
+
+# Remove existing users to ensure only current users remain 
+# Set grafana_purge_htpasswd=true in vars or at runtime with: --extra-vars="grafana_purge_htpasswd=true"
+- name: purge users
+  file: path={{ nginx_base_install_dir }}/nginx/conf/servers/{{ item  }} state=absent
+  with_items:
+    - grafana.htpasswd
+  when: grafana_purge_htpasswd
+
+# Implement grafana access using htpasswd module (Requires: python-passlib on managed nodes)
+- name: configure grafana read users using htpasswd module
+  htpasswd: path={{ nginx_base_install_dir }}/nginx/conf/servers/grafana.htpasswd name={{ item.value.username }} password={{ item.value.password }} owner=nginx group=nginx mode=0640
+  with_dict: grafana_read_users
+  when: grafana_read_users
+- name: configure grafana write users using htpasswd module
+  htpasswd: path={{ nginx_base_install_dir }}/nginx/conf/servers/grafana-write.htpasswd  name={{ item.value.username }} password={{ item.value.password }} owner=nginx group=nginx mode=0640
+  with_dict: grafana_write_users
+  when: grafana_write_users
+- name: configure admin users using htpasswd module
+  htpasswd: path={{ nginx_base_install_dir }}/nginx/conf/servers/admins.htpasswd  name={{ item.value.username }} password={{ item.value.password }} owner=nginx group=nginx mode=0640
+  with_dict: grafana_admin_users
+  when: grafana_admin_users
+
+# Implement grafana access using pre-built htpasswd files
+- name: copy pre-built grafana read and write htpasswd files
+  copy: src={{ grafana_htpasswd_files_path }}/{{ item }} dest={{ nginx_base_install_dir }}/nginx/conf/servers/{{ item }} owner=nginx group=nginx mode=0640
+  when: grafana_htpasswd_files_path|default(None) != None
+
+# Install custom key
+- name: install custom grafana key 
+  template: src=grafana.key.j2 dest={{ nginx_base_install_dir }}/nginx/conf/ssl/grafana.key owner=nginx group=nginx mode=0600
+  when: grafana_key is defined
+  notify:
+  - restart nginx
+
+# Install custom cert
+- name: install custom grafana certificate
+  template: src=grafana.crt.j2 dest={{ nginx_base_install_dir }}/nginx/conf/ssl/grafana.crt owner=nginx group=nginx mode=0600
+  when: grafana_cert is defined
+  notify:
+  - restart nginx
+
+# Install ssl certificate and key to secure grafana traffic
+- name: install example grafana server certificate and key
+  copy: src={{ item }} dest={{ nginx_base_install_dir }}/nginx/conf/ssl/{{ item }} owner=nginx group=nginx
+  with_items:
+    - grafana.crt
+    - grafana.key
+  notify:
+    - restart nginx
+  when: grafana_cert is not defined
+  
+# Install healthcheck response file for monitoring
+- name: install grafana healthcheck file
+  template: src=healthcheck.html.j2 dest={{ nginx_base_install_dir }}/nginx/html/{{ grafana_healthcheck_file }} owner=nginx group=nginx
+  when: grafana_healthcheck_url is defined
