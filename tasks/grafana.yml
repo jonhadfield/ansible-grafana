@@ -38,21 +38,13 @@
   when: grafana_purge_htpasswd
 
 # Implement grafana access using htpasswd module (Requires: python-passlib on managed nodes)
-- name: configure grafana read users using htpasswd module
-  htpasswd: path={{ nginx_base_install_dir }}/nginx/conf/servers/grafana.htpasswd name={{ item.value.username }} password={{ item.value.password }} owner=nginx group=nginx mode=0640
-  with_dict: grafana_read_users
-  when: grafana_read_users
-- name: configure grafana write users using htpasswd module
-  htpasswd: path={{ nginx_base_install_dir }}/nginx/conf/servers/grafana-write.htpasswd  name={{ item.value.username }} password={{ item.value.password }} owner=nginx group=nginx mode=0640
-  with_dict: grafana_write_users
-  when: grafana_write_users
 - name: configure admin users using htpasswd module
-  htpasswd: path={{ nginx_base_install_dir }}/nginx/conf/servers/admins.htpasswd  name={{ item.value.username }} password={{ item.value.password }} owner=nginx group=nginx mode=0640
+  htpasswd: path={{ nginx_base_install_dir }}/nginx/conf/servers/grafana.htpasswd  name={{ item.value.username }} password={{ item.value.password }} owner=nginx group=nginx mode=0640
   with_dict: grafana_admin_users
   when: grafana_admin_users
 
 # Implement grafana access using pre-built htpasswd files
-- name: copy pre-built grafana read and write htpasswd files
+- name: copy pre-built grafana htpasswd files
   copy: src={{ grafana_htpasswd_files_path }}/{{ item }} dest={{ nginx_base_install_dir }}/nginx/conf/servers/{{ item }} owner=nginx group=nginx mode=0640
   when: grafana_htpasswd_files_path|default(None) != None
 
